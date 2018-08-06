@@ -13,9 +13,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+from rest_framework_swagger.views import get_swagger_view
+
+schema_view = get_swagger_view(title='text service api')
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('alphacheck/', include('alphacheck.urls')),
+    path('docs/', schema_view),
 ]
