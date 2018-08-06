@@ -1,0 +1,56 @@
+#!/bin/bash
+
+do_up() {
+    docker-compose up -d
+}
+
+do_down() {
+    docker-compose down
+}
+
+do_tail() {
+    if which xpanes &> /dev/null; then
+        docker-compose ps -q | xpanes -c "docker inspect {} | jq -r '.[].Name'; docker logs -f {}"
+    else
+        docker-compose logs -f
+    fi
+}
+
+do_build() {
+    docker build -f Dockerfile --target builder -t text_service_builder .
+    docker build -f Dockerfile -t text_service .
+
+    docker build -f infra/nginx/Dockerfile --target static -t text_service_static .
+    docker build -f infra/nginx/Dockerfile -t text_service_nginx .
+}
+
+do_push() {
+    docker images -f reference="929468408151.dkr.ecr.us-east-1.amazonaws.com/text_service*" --format "{{.Repository}}:{{.Tag}}" |xargs docker rmi
+    docker tag revtool 929468408151.dkr.ecr.us-east-1.amazonaws.com/text_service:$(git rev-parse HEAD)
+    docker tag revtoolui_dist 929468408151.dkr.ecr.us-east-1.amazonaws.com/text_service_nginx:$(git rev-parse HEAD)
+    docker push 929468408151.dkr.ecr.us-east-1.amazonaws.com/text_service:$(git rev-parse HEAD)
+    docker push 929468408151.dkr.ecr.us-east-1.amazonaws.com/text_service_nginx:$(git rev-parse HEAD)
+}
+
+do_deploy() {
+    cd infra/k8s
+    ./deploy-sequence.sh
+}
+
+do_exec() {
+    docker-compose exec $rest
+}
+
+action=${1-start}
+shift
+rest=$*
+
+case $action in
+    up) do_up ;;
+    down) do_down ;;
+    tail) do_tail ;;
+    build) do_build ;;
+    push) do_push ;;
+    deploy) do_deploy ;;
+    exec) do_exec ;;
+esac
